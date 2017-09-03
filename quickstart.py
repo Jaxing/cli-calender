@@ -59,19 +59,34 @@ class Calender(object):
             print('Storing credentials to ' + credential_path)
         return credentials
 
-    def get_up_coming_events(self, number_of_events, calender_id):
+    def get_upcoming_events(self, number_of_events, calender_ids):
+        now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+        events = []
+
+        for calender_id in calender_ids:
+            calender_events = self._get_upcoming_events(number_of_events, calender_id)
+
+            if not len(calender_events) == 0:
+                events.append(calender_events)
+
+        events = reduce(Calender.merge_event_lists, events)
+
+        return events[:number_of_events]
+
+    def _get_upcoming_events(self, number_of_events, calender_id):
         now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
         events_result = self.service.events().list(
             calendarId=calender_id, timeMin=now, maxResults=number_of_events, singleEvents=True,
             orderBy='startTime').execute()
-        events = events_result.get('items', [])
-        return map(Event, events)
+        events = map(Event, events_result.get('items', []))
+        return events
 
-    def get_calendar_ids(self):
+    def get_calendar_ids(self, show_all=False):
         calendar_ids = []
 
         for calender in self.service.calendarList().list().execute()['items']:
-            calendar_ids.append(calender['id'])
+            if calender.get('selected') or show_all:
+                calendar_ids.append(calender['id'])
 
         return calendar_ids
 
@@ -130,14 +145,7 @@ def main():
     calender = Calender(service)
 
     ids = calender.get_calendar_ids()
-    print(ids[1])
-    events1 = calender.get_up_coming_events(10, ids[5])
-    print(events1[1].get_start_datetime())
-    print(ids[2])
-    events2 = calender.get_up_coming_events(10, ids[2])
-    print(events2[1].get_start_datetime())
-
-    events = Calender.merge_event_lists(events1, events2)
+    events = calender.get_upcoming_events(10, ids)
 
     if not events:
         print('No upcoming events found.')
