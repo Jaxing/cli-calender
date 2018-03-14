@@ -17,6 +17,6 @@ class Event(object):
     def get_title(self):
         return self._title
 
-    def get_start_datetime(self):
+    def get_start_datetime(self, timezone=None):
         start_string = self._start.get("dateTime", self._start.get('date'))
-        return parser.parse(start_string).replace(tzinfo=None)
+        return parser.parse(start_string).replace(tzinfo=timezone)
